@@ -1,0 +1,10 @@
+version: '3.5'
+
+services:
+  api:
+    image: rag:latest
+    command: python3 main.py
+    volumes:
+      - .:/app
+    ports:
+      - 8001:8001

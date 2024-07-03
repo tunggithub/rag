@@ -1,0 +1,6 @@
+langchain_openai==0.1.9
+langchain==0.2.5
+fastapi==0.111.0
+pydantic==2.7.4
+pydantic-settings==2.3.3
+uvicorn==0.30.1
