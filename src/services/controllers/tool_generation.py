@@ -39,7 +39,7 @@ async def tool_generation_task(request_data: ToolGenerationRequest):
             request_data.prompt
         )
         print(f"Processing time: {time.time() - start}")
-        return response
+        return ToolGenerationResponse(response=response)
     except Exception as err:
         print(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
