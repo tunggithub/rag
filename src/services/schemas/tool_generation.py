@@ -9,8 +9,11 @@ class Parameter(BaseModel):
     description: str
     type: str
 
-class ToolGenerationResponse(BaseModel):
+class ToolGenerationContent(BaseModel):
     name: str 
     description: str
     arguments: Dict[str, Parameter]
+
+class ToolGenerationResponse(BaseModel):
+    response: ToolGenerationContent
 
