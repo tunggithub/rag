@@ -1,7 +1,7 @@
 import traceback
 import time
 from fastapi import APIRouter, HTTPException, status
-from ..schemas import ToolGenerationRequest, ToolGenerationResponse
+from ..schemas import ToolGenerationRequest, ToolGenerationResponse, ToolGenerationContent
 from ...core import run_tool_gen, llm
 
 router = APIRouter()
@@ -39,7 +39,15 @@ async def tool_generation_task(request_data: ToolGenerationRequest):
             request_data.prompt
         )
         print(f"Processing time: {time.time() - start}")
-        return ToolGenerationResponse(response=response)
+        response = response.to_dict()
+        tool_gen_res = ToolGenerationContent(
+            name = response['name'],
+            description = response['description'],
+            arguments = response['arguments'] 
+        )
+        final_response = ToolGenerationResponse(response=tool_gen_res).to_dict()
+        print(final_response)
+        return final_response
     except Exception as err:
         print(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

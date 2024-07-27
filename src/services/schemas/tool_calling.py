@@ -1,3 +1,4 @@
+import json
 from pydantic import BaseModel, validator
 from typing import Dict, List, Any, Union
 
@@ -23,6 +24,9 @@ class ChatMessage(BaseModel):
         if v not in ['user', 'assistant', 'tool call']:
             raise ValueError(f"Invalid role {v} for chat message")
         return v
+    
+    def to_dict(self) -> Dict[str, str]:
+        return {"role": self.role, "content": self.content}
 
 class ToolCallingRequest(BaseModel):
     tools: List[ToolSample]
@@ -50,7 +54,18 @@ class ExtractedArguments(BaseModel):
                 raise TypeError(f"Argument name must be string")
 
         return v
+    
+    def to_dict(self) -> Dict:
+        return {"role": self.role, "content": self.content}
 
 class ToolCallingResponse(BaseModel):
     response: List[Union[ChatMessage, ExtractedArguments]]
+
+    def to_dict(self) -> Dict:
+        output = {"response": []}
+        for message in self.response:
+            output['response'].append(message.to_dict())
+        # output['response'] = json.dumps(output['response'])
+        return output
+
 
