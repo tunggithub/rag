@@ -10,6 +10,7 @@ from operator import itemgetter
 
 from src.core.qa.prompt import system_prompt, data_prompt_template, user_prompt_template
 from src.core.qa.schema import Answer
+from src.core.embedding import select_potential_context
 
 
 def _get_chain(llm: BaseLLM) -> RunnableSequence:
