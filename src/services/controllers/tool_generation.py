@@ -1,5 +1,6 @@
 import traceback
 import time
+import json
 from fastapi import APIRouter, HTTPException, status
 from ..schemas import ToolGenerationRequest, ToolGenerationResponse, ToolGenerationContent
 from ...core import run_tool_gen, llm
@@ -30,7 +31,7 @@ async def get_dummy_data():
     )
     return dummy_response
 
-@router.post('/tool-generation', status_code=status.HTTP_200_OK, response_model=ToolGenerationResponse)
+@router.post('/tool-generation', status_code=status.HTTP_200_OK)
 async def tool_generation_task(request_data: ToolGenerationRequest):
     try:
         start = time.time()
@@ -46,7 +47,7 @@ async def tool_generation_task(request_data: ToolGenerationRequest):
             arguments = response['arguments'] 
         )
         final_response = ToolGenerationResponse(response=tool_gen_res).to_dict()
-        print(final_response)
+        final_response['response'] = json.dumps(final_response['response'])
         return final_response
     except Exception as err:
         print(traceback.format_exc())
