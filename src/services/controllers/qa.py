@@ -16,11 +16,14 @@ async def get_dummy_data():
 async def qa_task(request_data: QATaskRequest):
     try:
         start = time.time()
-        related_context = select_potential_context(
-            embedding,
-            request_data.prompt,
-            request_data.datas,
-        )
+        if len(request_data.datas) > 10:
+            related_context = select_potential_context(
+                embedding,
+                request_data.prompt,
+                request_data.datas,
+            )
+        else:
+            related_context = request_data.datas
         print(f"Number of data sources after filter: {len(related_context)}")
         response = run_qa(llm, request_data.prompt, related_context)
         print(f"Processing time: {time.time() - start}")

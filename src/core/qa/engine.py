@@ -41,7 +41,8 @@ def _get_chain(llm: BaseLLM) -> RunnableSequence:
 
 def run_qa(llm: BaseLLM, question: str, data: List[Dict[str, str]]) -> Answer:
     chain = _get_chain(llm)
-    while True:
+    num_try = 5
+    for i in range(num_try):
         try:
             return chain.invoke({"question": question, "data": data})
         except:

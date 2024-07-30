@@ -83,7 +83,6 @@ class Validator():
             try:
                 question, all_chunks, correct_chunks = self.get_next_sample()
                 texts = [d["context"] for d in correct_chunks]
-                print("-----1")
                 selected_text = '\n'.join(texts) 
                 query_text = f"""Given the following CONTEXT:
 
@@ -94,26 +93,24 @@ class Validator():
                 response_gen = self.validation_llm(
                     query_text, temperature=0.8, max_new_tokens=2000
                 )
-                print("-----2")
                 start = time.time()
                 answer, citations = self.call_api(question, all_chunks)
                 process_time = time.time() - start
-                print("-----3")
+                sample = {
+                    "write_question": question,
+                    "all_chunks": all_chunks,
+                    "correct_chunks": [chunk["source"] for chunk in correct_chunks],
+                    "write_answer": response_gen,
+                    "answer": answer,
+                    "citations": citations,
+                    "process_time": process_time
+                }
+                samples.append(sample)
+                with open("./test_results/test_qa_result.json", "w") as file:
+                    # Write the data to the file
+                    json.dump(samples, file)
             except Exception as e: 
                 print(e)
-            sample = {
-                "write_question": question,
-                "all_chunks": all_chunks,
-                "correct_chunks": [chunk["source"] for chunk in correct_chunks],
-                "write_answer": response_gen,
-                "answer": answer,
-                "citations": citations,
-                "process_time": process_time
-            }
-            samples.append(sample)
-            with open("./test_results/test_qa_result.json", "w") as file:
-                # Write the data to the file
-                json.dump(samples, file)
     
     
     def validation_llm(self, messages, max_new_tokens = 160, temperature=0.7):
@@ -218,8 +215,6 @@ class Validator():
             'Content-Type': 'application/json'
         }
         json_payload = json.dumps(payload)
-        with open('data.json', 'w') as f:
-            json.dump(payload, f)
 
         response = requests.post(self.api_url, data=json_payload, headers=headers)
         answer = eval(response.text)["response"]
