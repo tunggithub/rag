@@ -1,3 +1,4 @@
+import json
 from langchain_core.language_models.llms import BaseLLM
 from langchain_core.runnables.base import RunnableSequence
 from langchain_core.messages import HumanMessage, AIMessage
@@ -95,7 +96,12 @@ def run_tool_calling(llm: BaseLLM, tools: List[Dict], message_history: List[Dict
     if len(tools) > 1:
         tool_choice_chain = _get_tool_choice_chain(llm)
         tool_name = None
+        num_try = 5
+        i = 0
         while tool_name is None:
+            i = i + 1
+            if i > num_try:
+                tool_name = tools[0].name
             response = tool_choice_chain.invoke(
                 {
                     "message_history": message_history,

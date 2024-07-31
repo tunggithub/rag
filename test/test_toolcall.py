@@ -11,6 +11,13 @@ from langchain_openai import ChatOpenAI
 import ast
 from pydantic import ValidationError
 from sentence_transformers import SentenceTransformer
+import requests
+import time
+
+import os
+os.environ["LANGCHAIN_TRACING_V2"]="true"
+os.environ["LANGCHAIN_ENDPOINT"]="https://api.smith.langchain.com"
+os.environ["LANGCHAIN_API_KEY"]="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"
 
 
 REWRITE_PROPMT = """Please rewrite the following text, ensuring to maintain the original meaning and nuances but altering the sentence structures, vocabulary, and overall presentation. 
@@ -109,7 +116,7 @@ def validate_tool_call(tool: Tool, tool_call: Dict[str, Any]) -> bool:
     except ValidationError as e:
         # bt.logging.warning(f"Validation error: {e}")
         return False
-    
+
     
 class ToolCall(BaseModel):
     name: str
@@ -133,6 +140,9 @@ class ChatMessage(BaseModel):
     
     def to_dict(self) -> Dict[str, str]:
         return {"role": self.role.value, "content": self.content}
+
+def messages_to_list(messages: List[ChatMessage]):
+    return [msg.to_dict() for msg in messages]
     
 def find_msgs_before_tool_call(messages: List[ChatMessage]):
     result = []
@@ -304,7 +314,7 @@ class ToolDataset():
 
 class Validator():
     def __init__(self):
-        self.api_url = "http://localhost:8000/conversation"
+        self.api_url = "http://localhost:8000/tool-calling"
         self.validation_llm_url = "https://polite-partly-sunbird.ngrok-free.app/v1"
         self.test_sets = ToolDataset()
         self.sentence_transformer = SentenceTransformer('BAAI/bge-small-en-v1.5')
@@ -313,6 +323,7 @@ class Validator():
         num_sample = 500
 
         samples = []
+        error_samples = []
         for i in tqdm(range(num_sample)):
             data: ToolCallData = next(self.test_sets)
             messages = data.messages
@@ -329,6 +340,8 @@ class Validator():
             user = data.messages[0].content
             assistant = data.messages[-1].content
             count = 0
+
+            messages_before_call = None
 
             while count < 10:
                 count += 1
@@ -353,11 +366,11 @@ class Validator():
                     
                     new_user = self.validation_llm([{"role": "user", "content": REWRITE_TOOL_USER_PROMPT.format(tool_call=new_tool_call, user=user)}], max_new_tokens=1000, temperature=1)
                     if not self.check_rewrite_alignment(new_user, user):
-                        raise Exception(f"User rewrite is not in alignment\nOriginal: {user}\n Rewrite: {new_user}")
+                        continue
                     
                     new_assistant = self.validation_llm([{"role": "user", "content": REWRITE_TOOL_ASSISTANT_PROMPT.format(tool_call=new_tool_call, user=new_user, assistant=assistant)}], max_new_tokens=1000, temperature=1).split("(")[0] # sometimes it adds an explanation in paranthesis
                     if not self.check_rewrite_alignment(new_assistant, assistant):
-                        raise Exception(f"Assistant rewrite is not in alignment\nOriginal: {assistant}\n Rewrite: {new_assistant}")
+                        continue
                     
                     data.messages[0].content = new_user
                     data.messages[-1].content = new_assistant
@@ -367,31 +380,42 @@ class Validator():
                     if messages_before_call[-1].role == "assistant":
                         messages_before_call = messages_before_call[:-1]
                     
-                    return messages_before_call, data.tools, data
-                else:
-                    new_user = self.validation_llm(REWRITE_PROPMT.format(query=user))
-                    if not self.check_rewrite_alignment(new_user, user):
-                        raise Exception(f"User rewrite is not in alignment\nOriginal: {user}\n Rewrite: {new_user}")
-                    
-                    new_assistant = self.validation_llm(REWRITE_PROPMT.format(query=assistant))
-                    if not self.check_rewrite_alignment(new_assistant, assistant):
-                        raise Exception(f"Assistant rewrite is not in alignment\nOriginal: {assistant}\n Rewrite: {new_assistant}")
-                    
-                    data.messages[0].content = new_user
-                    data.messages[-1].content = new_assistant
-                    if messages_before_call[-1].role == "assistant":
-                        messages_before_call = messages_before_call[:-1]
-                    
-                    return messages_before_call, data.tools, data
+                    break
+            if messages_before_call:
+                try:
+                    start = time.time()
+                    llm_response = self.call_api(messages_to_list(messages_before_call), [tool.to_dict() for tool in data.tools])
+                    process_time = time.time()-start
+                    sample = {
+                        "messages_before_call": messages_to_list(messages_before_call),
+                        "tools": [tool.to_dict() for tool in data.tools],
+                        "gt": messages_to_list(data.messages),
+                        "llm_response": eval(llm_response),
+                        "process_time": process_time
+                    }
+                    samples.append(sample)
+                    with open("./test_results/test_toolcall_result.json", "w") as file:
+                        # Write the data to the file
+                        json.dump(samples, file)
+                except:
+                    sample = {
+                        "messages_before_call": messages_to_list(messages_before_call),
+                        "tools": [tool.to_dict() for tool in data.tools],
+                        "gt": messages_to_list(data.messages),
+                    }
+                    error_samples.append(sample)
+                    with open("./test_results/test_toolcall_error_samples.json", "w") as file:
+                        # Write the data to the file
+                        json.dump(error_samples, file)
 
-    def call_api(self, question):
+
+    def call_api(self, message_history, tools):
+        for tool in tools:
+            for _, v in tool["arguments"].items():
+                v["required"] = str(v["required"])
         payload = {
-            "message_history": [
-                {
-                    "role": "user",
-                    "content": question
-                }
-            ]
+            "message_history": message_history,
+            "tools": tools
         }
         headers = {
             'Content-Type': 'application/json'
