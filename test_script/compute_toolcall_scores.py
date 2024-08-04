@@ -108,13 +108,7 @@ def correct_tool_use_and_response(expected_convo, llm_response, tools):
             miner_assistant = find_assistant_after_tool_call(miner_convo)
         else:
             miner_assistant = find_last_assistant(miner_convo)
-        sim = measure_relevance_of_texts(expected_assistant, miner_assistant)
-        if sim>0.90:
-            correct_assistant_percentage = 1
-        elif sim>0.85:
-            correct_assistant_percentage = 0.75
-        elif sim>0.50:
-            correct_assistant_percentage = 0.25
+        correct_assistant_percentage = measure_relevance_of_texts(expected_assistant, miner_assistant)
     except Exception as e:
         return 0, 0
             
@@ -130,4 +124,11 @@ if __name__ == '__main__':
     samples = []
 
     for sample in tqdm(data):
-        correct_tool_use_and_response(sample['gt'], sample['llm_response'], sample['tools'])
+        correct_tool_percentage, correct_assistant_percentage = correct_tool_use_and_response(sample['gt'], sample['llm_response'], sample['tools'])
+        sample['correct_tool_percentage'] = correct_tool_percentage
+        sample['correct_assistant_percentage'] = correct_assistant_percentage
+        samples.append(sample)
+    
+
+    with open(output_file, 'w') as file:
+        json.dump(samples, file)
