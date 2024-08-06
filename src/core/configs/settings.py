@@ -13,3 +13,8 @@ LLM_SETTINGS = {
 EMBEDDING_SETTINGS = {
     "api_key": ""
 }
+
+VISION_LANGUAGE_MODEL_SETTINGS = {
+    "model": "gpt-4o-mini",
+    "api_key": ""
+}
