@@ -4,29 +4,49 @@ from langchain_openai import ChatOpenAI
 from langchain import globals
 from langchain_core.runnables import chain
 from typing import List
+from .schema import VisionQAAnswer
+from .prompt import system_prompt
+from langchain_core.runnables.base import RunnableSequence
+from langchain_core.messages import SystemMessage
+from langchain_core.prompts import HumanMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.output_parsers import PydanticOutputParser
 import base64
 import requests
 import json
 
-async def _build_content(question: str, images: List[str]):
-    content = [
-        {"type": "text", "text": question}
-    ]
-    for image in images:
-        sample = {
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{image['content']}"}
-        }
-        content.append(sample)
-    return content
 
-async def run_vision_qa(llm: BaseLLM, question: str, images: List[str]) -> str:
-    content = await _build_content(question, images)
-    msg = llm.invoke(
-             [HumanMessage(content=content)]
+def _get_chain(llm: BaseLLM) -> RunnableSequence:
+    parser = PydanticOutputParser(pydantic_object=VisionQAAnswer)
+    chat_template = ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(content=(system_prompt)),
+            (
+                "human",
+                [
+                    {"type": "text", "text": "{question}"},
+                    {
+                        "type": "image_url",
+                        "image_url": "data:image/jpeg;base64,{base64_image}",
+                    },
+                ],
+            )
+        ]
     )
-    return msg.content
+    
+    chain = (
+        chat_template | llm | parser
+    )
+    return chain
 
+
+async def run_vision_qa(llm: BaseLLM, question: str, base64_image: str):
+    chain = _get_chain(llm)
+    result = chain.invoke({
+        'question': question,
+        'base64_image': base64_image
+    })
+    return result
 
 if __name__ == "__main__":
     llm = ChatOpenAI(model='gpt-4o-mini', api_key='')

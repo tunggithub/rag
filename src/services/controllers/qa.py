@@ -48,9 +48,10 @@ async def qa_task(request_data: QATaskRequest):
             print(f"Processing time: {time.time() - start}")
             return _refine_qa_response(related_context, response)
         else:
-            response = await run_vision_qa(vlm, request_data.prompt, request_data.files)
-            final_response = VisionQATaskResponse(response=response)
+            response = await run_vision_qa(vlm, request_data.prompt, request_data.files[0]['content'])
+            final_response = VisionQATaskResponse(response=response.answer)
             return final_response
     except Exception as err:
+        print(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=str(err))
