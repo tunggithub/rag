@@ -4,7 +4,7 @@ from typing import List, Union, Dict
 
 class Parameter(BaseModel):
     description: str = Field(description="Description of the parameter.")
-    required: str = Field(description="Is this parameter required to be provided by the user, or can it be set to a default value? If yes, return true; otherwise, return false.")
+    required: bool = Field(description="Is this parameter required to be provided by the user, or can it be set to a default value? If yes, return true; otherwise, return false.")
     type: str = Field(description="Data type of the parameter.")
     
     def to_dict(self) -> Dict[str, str]:

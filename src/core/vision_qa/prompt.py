@@ -7,4 +7,18 @@ Here is the output schema. No need to provide an explanation, please return in J
     "answer": string - The answer to the question. If the answer is date, please return it under MM/DD/YYYY format
 }}
 ```
+For example, here is good response
+```json
+{{
+    "answer": "90"
+}}
+```
+
+Here is bad response
+```json
+{{
+    "answer": "The result is 90"
+}}
+```
+
 """

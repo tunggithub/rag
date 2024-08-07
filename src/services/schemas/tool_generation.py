@@ -5,7 +5,7 @@ class ToolGenerationRequest(BaseModel):
     prompt: str 
 
 class Parameter(BaseModel):
-    required: str
+    required: bool
     description: str
     type: str
 
