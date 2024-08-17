@@ -10,7 +10,7 @@ from operator import itemgetter
 
 from src.core.qa.prompt import system_prompt, data_prompt_template, user_prompt_template
 from src.core.qa.schema import Answer
-from src.core.embedding import select_potential_context
+from src.services.schemas.qa import DataSource
 
 
 def _get_chain(llm: BaseLLM) -> RunnableSequence:
@@ -42,9 +42,19 @@ def _get_chain(llm: BaseLLM) -> RunnableSequence:
 def run_qa(llm: BaseLLM, question: str, data: List[Dict[str, str]]) -> Answer:
     chain = _get_chain(llm)
     num_try = 5
+    source_map = {}
+    encrypted_data = []
+    for i, d in enumerate(data):
+        encrypted_source = f"s_{i}"
+        source_map[encrypted_source] = d.source
+        encrypted_data.append(DataSource(context=d.context, source=encrypted_source))
+
     for i in range(num_try):
         try:
-            return chain.invoke({"question": question, "data": data})
+            result = chain.invoke({"question": question, "data": encrypted_data})
+            decrypted_citations = [source_map[key] for key in result.citations]
+            result.citations = decrypted_citations
+            return result
         except:
             pass
 
